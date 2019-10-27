@@ -12,7 +12,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private TextMesh text;
 
     private int _moves = 4;
-    private int _round = 0;
+    private int _score = 0;
     private int _lives = 3;
     private float _speed = 0.5f;
 
@@ -90,33 +90,33 @@ public class GameController : MonoBehaviour
             cup.OnClick -= Select;
         }
 
-        _round++;
+        _score++;
         // ReSharper disable once PossibleInvalidOperationException
         if (won.Value)
         {
             _speed *= 0.85f;
-            text.text = $"You won!\nScore: {_round}\nLives: {_lives}";
+            text.text = $"You won!\nScore: {_score}\nLives: {_lives}";
         }
         else
         {
             _lives--;
-            text.text = $"You lost!\nScore: {_round}\nLives: {_lives}";
+            text.text = $"You lost!\nScore: {_score}\nLives: {_lives}";
         }
 
         if (_lives == 0)
         {
             var prevscore = PlayerPrefs.GetInt("highscore", 0);
-            if (_round > prevscore)
+            if (_score > prevscore)
             {
-                PlayerPrefs.SetInt("highscore", prevscore);
+                PlayerPrefs.SetInt("highscore", _score);
                 PlayerPrefs.Save();
             }
 
             text.text =
-                $"Game over!\nFinal Score: {_round}\nHighscore: {prevscore}";
+                $"Game over!\nFinal Score: {_score}\nHighscore: {prevscore}";
 
             _lives = 3;
-            _round = 0;
+            _score = 0;
             _speed = 0.5f;
             _moves = 4;
         }

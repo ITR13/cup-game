@@ -54,10 +54,19 @@ public class GameController : MonoBehaviour
 
         for (var i = 0; i < _moves; i++)
         {
-            var firstR = Random.Range(0, cups.Length);
-            var secondR = (firstR + Random.Range(1, cups.Length)) % cups.Length;
+            if (Random.Range(0, 4) == 0)
+            {
+                yield return Swirl(Random.Range(0, 2) == 0, time);
+            }
+            else
+            {
+                var firstR = Random.Range(0, cups.Length);
+                var secondR = Random.Range(1, cups.Length);
+                secondR += firstR;
+                secondR %= cups.Length;
 
-            yield return Swap(cups[firstR], cups[secondR], time);
+                yield return Swap(cups[firstR], cups[secondR], time);
+            }
         }
 
 
@@ -98,13 +107,12 @@ public class GameController : MonoBehaviour
         // ReSharper disable once PossibleInvalidOperationException
         if (won.Value)
         {
-            _speed *= 0.8f;
+            _speed *= 0.85f;
             text.text = $"You won!\nScore: {_round}\nLives: {_lives}";
         }
         else
         {
             _lives--;
-            _speed /= 0.8f;
             text.text = $"You lost!\nScore: {_round}\nLives: {_lives}";
         }
 
@@ -142,6 +150,27 @@ public class GameController : MonoBehaviour
 
         yield return firstCoroutine;
         yield return secondCoroutine;
+
+        yield return new WaitForSeconds(time / 10f);
+    }
+
+    private IEnumerator Swirl(bool reverse, float time)
+    {
+        var all = reverse ? cups.Reverse().ToArray() : cups;
+        var positions = all.Select(cup => cup.transform.position).ToArray();
+
+        var routines = new Coroutine[all.Length];
+        for (var i = 0; i < all.Length; i++)
+        {
+            routines[i] = StartCoroutine(
+                all[i].MoveTo(positions[(i + 1) % positions.Length], time)
+            );
+        }
+
+        foreach (var coroutine in routines)
+        {
+            yield return coroutine;
+        }
         yield return new WaitForSeconds(time / 10f);
     }
 }

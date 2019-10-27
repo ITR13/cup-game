@@ -11,9 +11,9 @@ public class GameController : MonoBehaviour
     [SerializeField] private Play play;
     [SerializeField] private TextMesh text;
 
-    private int _moves = 5;
-    private int _wins = 0;
-    private int _losses = 0;
+    private int _moves = 4;
+    private int _round = 0;
+    private int _lives = 3;
     private float _speed = 0.5f;
 
     private void Reset()
@@ -67,7 +67,7 @@ public class GameController : MonoBehaviour
         var correct = cups[Random.Range(0, cups.Length)];
         var name = correct.gameObject.name;
         text.text =
-            $"Press the\n<color={name}>{name}</color>\n cup!";
+            $"Press the\n<color={name}>{name}</color>\ncup!";
 
 
         bool? won = null;
@@ -94,21 +94,40 @@ public class GameController : MonoBehaviour
             cup.OnClick -= Select;
         }
 
+        _round++;
         // ReSharper disable once PossibleInvalidOperationException
         if (won.Value)
         {
-            _wins++;
-            _speed *= 0.9f;
-            text.text = $"You won!\n{_wins} wins\n{_losses} losses";
+            _speed *= 0.8f;
+            text.text = $"You won!\nScore: {_round}\nLives: {_lives}";
         }
         else
         {
-            _losses++;
-            _speed *= 1.1f;
-            text.text = $"You lost!\n{_wins} wins\n{_losses} losses";
+            _lives--;
+            _speed /= 0.8f;
+            text.text = $"You lost!\nScore: {_round}\nLives: {_lives}";
+        }
+
+        if (_lives == 0)
+        {
+            var prevscore = PlayerPrefs.GetInt("highscore", 0);
+            if (_round > prevscore)
+            {
+                PlayerPrefs.SetInt("highscore", prevscore);
+                PlayerPrefs.Save();
+            }
+
+            text.text =
+                $"Game over!\nFinal Score: {_round}\nHighscore: {prevscore}";
+
+            _lives = 3;
+            _round = 0;
+            _speed = 0.5f;
+            _moves = 4;
         }
 
         play.Show();
+        Debug.Log($"Speed: {_speed}");
     }
 
     private IEnumerator Swap(Cup first, Cup second, float time)

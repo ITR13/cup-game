@@ -124,12 +124,11 @@ public class GameController : MonoBehaviour
         }
         else if (
             _score % 7 == 0 &&
-            _score > 0 &&
             _currentCups.Length < cups.Length
         )
         {
             _speed = 0.5f;
-            SetCups(_currentCups.Length + 1);
+            SetCups(3 + _score / 7);
         }
 
         play.Show();

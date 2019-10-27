@@ -1,9 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Serialization;
+using UnityEditor.Experimental;
 using UnityEngine;
 using UnityEngine.Playables;
+using Random = UnityEngine.Random;
 
 public class GameController : MonoBehaviour
 {
@@ -11,6 +14,7 @@ public class GameController : MonoBehaviour
     [SerializeField] private Play play;
     [SerializeField] private TextMesh text;
 
+    private Cup[] _currentCups = new Cup[0];
     private int _moves = 4;
     private int _score = 0;
     private int _lives = 3;
@@ -21,17 +25,14 @@ public class GameController : MonoBehaviour
         cups = GetComponentsInChildren<Cup>();
         play = GetComponentInChildren<Play>();
         text = GetComponentInChildren<TextMesh>();
+        SetCups(cups.Length);
     }
 
     private void Start()
     {
         play.Show();
         play.OnPlayClicked += StartGame;
-        foreach (var cup in cups)
-        {
-            cup.SetVisible(true);
-        }
-
+        SetCups(3);
         text.text = "Press Play\nto Play!";
     }
 
@@ -46,7 +47,7 @@ public class GameController : MonoBehaviour
     private IEnumerator PlayGame(float time)
     {
         var startAnim =
-            cups.Select(cup => StartCoroutine(cup.Blink())).ToArray();
+            _currentCups.Select(cup => StartCoroutine(cup.Blink())).ToArray();
         foreach (var coroutine in startAnim)
         {
             yield return coroutine;
@@ -60,7 +61,7 @@ public class GameController : MonoBehaviour
         yield return new WaitForSeconds(_speed);
 
 
-        var correct = cups[Random.Range(0, cups.Length)];
+        var correct = _currentCups[Random.Range(0, _currentCups.Length)];
         var correctName = correct.gameObject.name;
         text.text =
             $"Press the\n<color={correctName}>{correctName}</color>\ncup!";
@@ -73,7 +74,7 @@ public class GameController : MonoBehaviour
             won = color == correct.Color;
         }
 
-        foreach (var cup in cups)
+        foreach (var cup in _currentCups)
         {
             cup.OnClick += Select;
         }
@@ -84,16 +85,16 @@ public class GameController : MonoBehaviour
         }
 
 
-        foreach (var cup in cups)
+        foreach (var cup in _currentCups)
         {
             cup.SetVisible(true);
             cup.OnClick -= Select;
         }
 
-        _score++;
         // ReSharper disable once PossibleInvalidOperationException
         if (won.Value)
         {
+            _score++;
             _speed *= 0.85f;
             text.text = $"You won!\nScore: {_score}\nLives: {_lives}";
         }
@@ -119,6 +120,11 @@ public class GameController : MonoBehaviour
             _score = 0;
             _speed = 0.5f;
             _moves = 4;
+            SetCups(3);
+        }else if (_score % 7 == 0 && _currentCups.Length < cups.Length)
+        {
+            _speed = 0.5f;
+            SetCups(_currentCups.Length + 1);
         }
 
         play.Show();
@@ -129,21 +135,27 @@ public class GameController : MonoBehaviour
     {
         if (Random.Range(0, 4) == 0)
         {
-            yield return Swirl(Random.Range(0, 2) == 0, time);
+            yield return Swirl(time);
         }
         else
         {
-            var firstR = Random.Range(0, cups.Length);
-            var secondR = Random.Range(1, cups.Length);
-            secondR += firstR;
-            secondR %= cups.Length;
 
-            yield return Swap(cups[firstR], cups[secondR], time);
+            yield return Swap(time);
         }
     }
 
-    private IEnumerator Swap(Cup first, Cup second, float time)
+    private IEnumerator Swap(float time)
     {
+        var firstR = Random.Range(0, _currentCups.Length);
+        var secondR = Random.Range(1, _currentCups.Length);
+        secondR += firstR;
+        secondR %= _currentCups.Length;
+
+        var first = _currentCups[firstR];
+        var second = _currentCups[secondR];
+        _currentCups[firstR] = second;
+        _currentCups[secondR] = first;
+
         var firstPosition = first.transform.position;
         var secondPosition = second.transform.position;
 
@@ -162,20 +174,38 @@ public class GameController : MonoBehaviour
         yield return new WaitForSeconds(time / 10f);
     }
 
-    private IEnumerator Swirl(bool reverse, float time)
+    private IEnumerator Swirl(float time)
     {
-        var all = reverse ? cups.Reverse().ToArray() : cups;
-        var positions = all.Select(cup => cup.transform.position).ToArray();
+        var reverse = Random.Range(0, 2) == 0;
+        var positions = _currentCups
+            .Select(cup => cup.transform.position)
+            .ToArray();
 
-        var routines = new Coroutine[all.Length];
-        for (var i = 0; i < all.Length; i++)
+        var routines = new Coroutine[_currentCups.Length];
+        for (var i = 0; i < _currentCups.Length; i++)
         {
-            var next = (i + 1) % positions.Length;
-            SetZ(all[i].transform, positions[next].z);
+            var next = reverse ? i + positions.Length - 1 : i + 1;
+            next %= positions.Length;
 
+            SetZ(_currentCups[i].transform, positions[next].z);
             routines[i] = StartCoroutine(
-                all[i].MoveTo(positions[next], time)
+                _currentCups[i].MoveTo(positions[next], time)
             );
+        }
+
+        if (reverse)
+        {
+            var temp = new Cup[_currentCups.Length];
+            Array.Copy(_currentCups, 1, temp, 0, _currentCups.Length - 1);
+            temp[_currentCups.Length - 1] = _currentCups[0];
+            _currentCups = temp;
+        }
+        else
+        {
+            var temp = new Cup[_currentCups.Length];
+            Array.Copy(_currentCups, 0, temp, 1, _currentCups.Length - 1);
+            temp[0] = _currentCups[_currentCups.Length - 1];
+            _currentCups = temp;
         }
 
         foreach (var coroutine in routines)
@@ -190,5 +220,16 @@ public class GameController : MonoBehaviour
         var pos = t.position;
         pos.z = z;
         t.position = pos;
+    }
+
+    private void SetCups(int count)
+    {
+        cups = _currentCups.Concat(cups.Skip(_currentCups.Length)).ToArray();
+
+        _currentCups = cups.Take(count).ToArray();
+        for (var i = 0; i < cups.Length; i++)
+        {
+            cups[i].gameObject.SetActive(i < count);
+        }
     }
 }

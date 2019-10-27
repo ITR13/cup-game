@@ -28,7 +28,7 @@ public class GameController : MonoBehaviour
         SetCups(cups.Length);
     }
 
-    private void Start()
+    private void Awake()
     {
         play.Show();
         play.OnPlayClicked += StartGame;

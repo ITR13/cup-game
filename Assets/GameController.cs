@@ -121,7 +121,12 @@ public class GameController : MonoBehaviour
             _speed = 0.5f;
             _moves = 4;
             SetCups(3);
-        }else if (_score % 7 == 0 && _currentCups.Length < cups.Length)
+        }
+        else if (
+            _score % 7 == 0 &&
+            _score > 0 &&
+            _currentCups.Length < cups.Length
+        )
         {
             _speed = 0.5f;
             SetCups(_currentCups.Length + 1);
@@ -163,7 +168,7 @@ public class GameController : MonoBehaviour
         SetZ(first.transform, secondPosition.z);
         SetZ(second.transform, firstPosition.z);
 
-        var firstCoroutine = 
+        var firstCoroutine =
             StartCoroutine(first.MoveTo(secondPosition, time));
         var secondCoroutine =
             StartCoroutine(second.MoveTo(firstPosition, time));
@@ -212,6 +217,7 @@ public class GameController : MonoBehaviour
         {
             yield return coroutine;
         }
+
         yield return new WaitForSeconds(time / 10f);
     }
 

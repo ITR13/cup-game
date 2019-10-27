@@ -54,29 +54,16 @@ public class GameController : MonoBehaviour
 
         for (var i = 0; i < _moves; i++)
         {
-            if (Random.Range(0, 4) == 0)
-            {
-                yield return Swirl(Random.Range(0, 2) == 0, time);
-            }
-            else
-            {
-                var firstR = Random.Range(0, cups.Length);
-                var secondR = Random.Range(1, cups.Length);
-                secondR += firstR;
-                secondR %= cups.Length;
-
-                yield return Swap(cups[firstR], cups[secondR], time);
-            }
+            yield return RandomMove(time);
         }
-
 
         yield return new WaitForSeconds(_speed);
 
 
         var correct = cups[Random.Range(0, cups.Length)];
-        var name = correct.gameObject.name;
+        var correctName = correct.gameObject.name;
         text.text =
-            $"Press the\n<color={name}>{name}</color>\ncup!";
+            $"Press the\n<color={correctName}>{correctName}</color>\ncup!";
 
 
         bool? won = null;
@@ -138,10 +125,31 @@ public class GameController : MonoBehaviour
         Debug.Log($"Speed: {_speed}");
     }
 
+    private IEnumerator RandomMove(float time)
+    {
+        if (Random.Range(0, 4) == 0)
+        {
+            yield return Swirl(Random.Range(0, 2) == 0, time);
+        }
+        else
+        {
+            var firstR = Random.Range(0, cups.Length);
+            var secondR = Random.Range(1, cups.Length);
+            secondR += firstR;
+            secondR %= cups.Length;
+
+            yield return Swap(cups[firstR], cups[secondR], time);
+        }
+    }
+
     private IEnumerator Swap(Cup first, Cup second, float time)
     {
         var firstPosition = first.transform.position;
         var secondPosition = second.transform.position;
+
+        // ReSharper disable once Unity.InefficientPropertyAccess
+        SetZ(first.transform, secondPosition.z);
+        SetZ(second.transform, firstPosition.z);
 
         var firstCoroutine = 
             StartCoroutine(first.MoveTo(secondPosition, time));
@@ -162,8 +170,11 @@ public class GameController : MonoBehaviour
         var routines = new Coroutine[all.Length];
         for (var i = 0; i < all.Length; i++)
         {
+            var next = (i + 1) % positions.Length;
+            SetZ(all[i].transform, positions[next].z);
+
             routines[i] = StartCoroutine(
-                all[i].MoveTo(positions[(i + 1) % positions.Length], time)
+                all[i].MoveTo(positions[next], time)
             );
         }
 
@@ -172,5 +183,12 @@ public class GameController : MonoBehaviour
             yield return coroutine;
         }
         yield return new WaitForSeconds(time / 10f);
+    }
+
+    private void SetZ(Transform t, float z)
+    {
+        var pos = t.position;
+        pos.z = z;
+        t.position = pos;
     }
 }
